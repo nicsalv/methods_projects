@@ -44,7 +44,7 @@ f_std = deltaT / Cf;
 csi_std = .5^.5;
 omega_c = c_std .* randn(1, length(t)-1);
 omega_f = f_std .* randn(1, length(t)-1);
-omega_tilde = [omega_c; omega_f];
+omega_tilde = [omega_c; omega_f] .* deltaT;
 csi_f = csi_std .* randn(1, length(t)-1);
 stats = [mean(omega_f) std(omega_f) var(omega_f)];
 
@@ -55,30 +55,48 @@ y = zeros(1, length(t));
 x(:,1) = [293; 291];
 
 theta_a = interp1(hours, theta_a, t);
+eta = zeros(2, length(t)-1);
 
 A_tilde = A .* deltaT + eye(size(A));
 B_tilde = deltaT .* B;
 Ba_tilde = deltaT .* Ba;
 
 for k = 1 : length(t) - 1
+    % Salvataggio della sequenza nota (utile per dopo)
+    eta(:,k) = Ba_tilde * theta_a(k);
     % La k-esima colonna di x corrisponde all'istante k*deltaT
     x(:,k+1) = A_tilde * x(:,k) + B_tilde * q(:,k) ...
-        + Ba_tilde * theta_a(k) + omega_tilde(:,k);
+        + eta(:,k) + omega_tilde(:,k);
     y(k) = C * x(:,k) + csi_f(k);
 end
 y(end) = y(end-1); % Solamente per plottare correttamente
+% stairs(t, [x' theta_a']);
+% legend('x1','x2','theta_a');
 
-stairs(t, [x' theta_a' y']);
-legend('x1','x2','theta_a','y');
 
-eig(A_tilde)
- 
-% % Definizione delle quantità come nel paper
-% % Le matrici A e B sono già inserite
-% z = zeros(2, length(t));
-% u = zeros(2, length(t)-1);
-% mi = zeros(2, length(t)-1);
-% eta = [zeros(1, length(t)); interp1(hours, theta_a, t)];
-% z_hat = [interp1(hours, theta_c_star, t); zeros(1, length(t))];
-% 
-% plot(hours,theta_c_star,'o', t,z_hat(1,:),':.');
+
+% Controllo LQG/LQT come indicato nel paper
+
+z = zeros(2, length(t));
+z_hat = [278; 0]; % Il tracking, per ora, è solamente un setpoint
+z0 = [10; 0];
+
+% Calcolo del controllo
+M = [1 0; 0 0]; % Stato di due dimensioni
+N = 1; % Controllo scalare
+MT = M;
+[K,Kg,mu,z_d2,g] = Riccati_nonStandard_LQG...
+    (M, N, MT, eta, z_hat, A_tilde, B_tilde, z0, t);
+
+% Evoluzione del sistema controllato
+for k = 1 : length(t)-1
+    q(k) = K(:,:,k) * (z(:,k) - z_d2(:,k)) + Kg(:,:,k) * g(:,k+1);
+
+    z(:,k+1) = A_tilde * z(:,k) + B_tilde * q(:,k) ...
+        + mu(:,k) + omega_tilde(:,k);
+    
+    y(k) = C * x(:,k) + csi_f(k);
+
+end
+
+stairs(t, [(z(1,:)+z_hat(1))' x(1,:)']);
