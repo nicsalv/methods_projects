@@ -1,4 +1,4 @@
-function [K, Kg, mu, zd2, g] = Riccati_nonStandard_LQG(M, N, MT, eta, z_hat, A, B, z0, t)
+function [K, Kg, zd2, g] = Riccati_nonStandard_LQG(M, N, MT, mi, A, B, z0, t)
     % Compute K_t and Kg_t matries for optimal control of non standard LQG.
     % The cost function is like : J = sum_t( c(zt, ut) ) + zT' MT zT
     % with c(zt, ut) = zt' M zt + ut' N ut
@@ -16,26 +16,19 @@ function [K, Kg, mu, zd2, g] = Riccati_nonStandard_LQG(M, N, MT, eta, z_hat, A, 
     dim_control = size(N,1);
     I = eye(dim_state);
     
-    % Compute the mu vector
-    mu = zeros(2, length(t)-1);
-    for k = 1 : length(t)-1
-        mu(:,k) = eta(:,k) + (A - I) * z_hat;
-    end
-    
     % Compute the zd2 vector
     zd2 = zeros(dim_state, dim);
     zd2(:,1) = z0;
-    
-    for t = 2 : dim
-        zd2(:,t) = A * zd2(:,t-1) + mu(:,t-1);
+    for t = 1 : dim - 1
+        zd2(:,t+1) = A * zd2(:,t) + mi(:,t);
     end
     
     % Compute the P matrix (Riccati matrix)
-    P = zeros(dim_state, dim_state , dim);
+    P = zeros(dim_state, dim_state, dim);
     P(:, :, end) = MT;
     
     for t = (dim-1) : -1 : 1
-        P(:, :, t) = M + A' * P(:, :, t+1) * ((I + (B*(N\B')) * P(:,:,t+1)) \ A);
+        P(:, :, t) = M + A' * P(:,:,t+1) * ((I + (B*(N\B')) * P(:,:,t+1)) \ A);
     end
     
     % Compute the g vector

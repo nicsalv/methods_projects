@@ -44,59 +44,60 @@ f_std = deltaT / Cf;
 csi_std = .5^.5;
 omega_c = c_std .* randn(1, length(t)-1);
 omega_f = f_std .* randn(1, length(t)-1);
-omega_tilde = [omega_c; omega_f] .* deltaT;
-csi_f = csi_std .* randn(1, length(t)-1);
+omega = [omega_c; omega_f] .* deltaT; % Rumore sullo stato
+csi_f = csi_std .* randn(1, length(t)-1); % Rumore sull'uscita
 stats = [mean(omega_f) std(omega_f) var(omega_f)];
 
-% Risposta libera del sistema discreto
-x = zeros(2, length(t));
-q = ones(1, length(t)-1) * 0;
+% Variabili di interesse
+z = zeros(2, length(t));
+q = zeros(1, length(t)-1);
 y = zeros(1, length(t));
-x(:,1) = [293; 291];
+z(:,1) = [0; 291]; % Si parte da un punto già ottimo
 
-theta_a = interp1(hours, theta_a, t);
-eta = zeros(2, length(t)-1);
+% Segnale da inseguire
+z_hat = [interp1(hours, theta_c_star, t); zeros(1, length(t))];
 
-A_tilde = A .* deltaT + eye(size(A));
-B_tilde = deltaT .* B;
-Ba_tilde = deltaT .* Ba;
+theta_a = interp1(hours, theta_a, t); % Disturbo deterministico
+eta = zeros(2, length(t)-1); % Sequenze note
+mi = zeros(2, length(t)-1);
 
+% Discretizzazione delle matrici
+A = A .* deltaT + eye(size(A));
+B = deltaT .* B;
+Ba = deltaT .* Ba;
+
+% Risposta del sistema ad un ingresso nullo
 for k = 1 : length(t) - 1
-    % Salvataggio della sequenza nota (utile per dopo)
-    eta(:,k) = Ba_tilde * theta_a(k);
+    % Salvataggio delle sequenze note (servono per il controllo)
+    eta(:,k) = Ba * theta_a(k);
+    mi(:,k) = eta(:,k) + (A - eye(2)) * z_hat(:,k);
+    
     % La k-esima colonna di x corrisponde all'istante k*deltaT
-    x(:,k+1) = A_tilde * x(:,k) + B_tilde * q(:,k) ...
-        + eta(:,k) + omega_tilde(:,k);
-    y(k) = C * x(:,k) + csi_f(k);
+    z(:,k+1) = A * z(:,k) + mi(:,k) + omega(:,k);
+    y(k) = C * z(:,k) + csi_f(k);
 end
-y(end) = y(end-1); % Solamente per plottare correttamente
-% stairs(t, [x' theta_a']);
-% legend('x1','x2','theta_a');
-
-
 
 % Controllo LQG/LQT come indicato nel paper
 
-z = zeros(2, length(t));
-z_hat = [278; 0]; % Il tracking, per ora, è solamente un setpoint
-z0 = [10; 0];
-
 % Calcolo del controllo
-M = [1 0; 0 0]; % Stato di due dimensioni
-N = 1; % Controllo scalare
+M = [.1 0; 0 0]; % Si vuole inseguire solo una delle due componenti
+N = 1e-12; % Controllo scalare
 MT = M;
-[K,Kg,mu,z_d2,g] = Riccati_nonStandard_LQG...
-    (M, N, MT, eta, z_hat, A_tilde, B_tilde, z0, t);
+[K,Kg,z_d2,g] = Riccati_nonStandard_LQG(M, N, MT, mi, A, B, z(:,1), t);
 
 % Evoluzione del sistema controllato
+zc = zeros(2, length(t));
+zc(:,1) = [0; 291];
 for k = 1 : length(t)-1
-    q(k) = K(:,:,k) * (z(:,k) - z_d2(:,k)) + Kg(:,:,k) * g(:,k+1);
-
-    z(:,k+1) = A_tilde * z(:,k) + B_tilde * q(:,k) ...
-        + mu(:,k) + omega_tilde(:,k);
     
-    y(k) = C * x(:,k) + csi_f(k);
+    % Calcolo del controllo
+    q(k) = K(:,:,k) * (zc(:,k) - z_d2(:,k)) + Kg(:,:,k) * g(:,k+1);
+
+    % Evoluzione del sistema
+    zc(:,k+1) = A * zc(:,k) + B * q(:,k) + mi(:,k) + omega(:,k);
+    y(k) = C * zc(:,k) + csi_f(k);
 
 end
 
-stairs(t, [(z(1,:)+z_hat(1))' x(1,:)']);
+stairs(t, (zc(1,:) + z_hat(1,:))');
+legend('theta_c controlled');
