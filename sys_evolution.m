@@ -99,5 +99,6 @@ for k = 1 : length(t)-1
 
 end
 
-stairs(t, (zc(1,:) + z_hat(1,:))');
-legend('theta_c controlled');
+%stairs(t, (zc(1,:) + z_hat(1,:))');
+plot(t, (zc(1,:) + z_hat(1,:))', t, z_hat(1,:)', t, theta_a, t, (zc(2,:) + z_hat(2,:))');
+legend('theta_c controlled','z_hat','theta_a', 'thata_f_controlled');
