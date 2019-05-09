@@ -1,4 +1,4 @@
-function [K, Kg, zd2, g] = Riccati_nonStandard_LQG(M, N, MT, mi, A, B, z0, t)
+function [K, Kg, zd2, g] = Riccati_nonStandard_LQG(M, N, MT, mi, A, B, C, z0, t)
     % Compute K_t and Kg_t matries for optimal control of non standard LQG.
     % The cost function is like : J = sum_t( c(zt, ut) ) + zT' MT zT
     % with c(zt, ut) = zt' M zt + ut' N ut
@@ -33,12 +33,11 @@ function [K, Kg, zd2, g] = Riccati_nonStandard_LQG(M, N, MT, mi, A, B, z0, t)
     
     % Compute the g vector
     g = zeros(dim_state, dim);
-    g(:,end) = MT * zd2(:, end);
+    g(:,end) = C' * MT * zd2(:, end);
     
     for t = (dim-1) : -1 : 1
-        g(:, t) = (A' - (P(:,:,t+1) * ...
-            ((I + (B * (N \ B'))) \ P(:,:,t+1))) * ...
-            (B * (N \ B'))) * g(:,t+1) - M * zd2(:,t);
+        g(:, t) = A' - (I - ((inv(P(:,:,t+1)) + (B / N) * B') \ ((B / N) * B'))) * g(:,t+1) + ...
+            C' * M * zd2(:,t);
     end
     
     % Compute Kg matrix

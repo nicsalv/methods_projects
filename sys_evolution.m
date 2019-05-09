@@ -3,6 +3,7 @@
 %%%
 
 clear;
+clc;
 
 % Raccolta dei dati dal file Excel
 theta_a = xlsread('dati.xlsx', 'F1:F25');
@@ -89,8 +90,10 @@ z0 = [0 291]';
 % Parte stocastica del sistema -> trascuro theta_a -> LQG
 
 % TODO: calcola matrici di covarianza
-SIGMA_varianza = eye(2);
-[sigma, kalm] = kalmanFilter(A, C, Q_varianza, R_varianza, SIGMA_varianza, t);
+Q_var = [var(omega(1,:)) 0; 0 var(omega(2,:))];
+R_var = .5;
+SIGMA_var = eye(2);
+[sigma, kalm] = kalmanFilter(A, C, Q_var, R_var, SIGMA_var, t);
 
 us = zeros(1, length(t));
 
@@ -99,7 +102,8 @@ z_estimate = zeros(2, length(t));
 
 zs(:,1) = z0;
 
-% TODO: compute k for control -> Riccati_K_G
+% compute k for control -> Riccati_P_K ?!?
+[P, K, K_infinito] = riccati_P_K(A, B, M, MT, N, t);
 
 for i = 1 : length(t) - 1
     
@@ -108,13 +112,13 @@ for i = 1 : length(t) - 1
     if ( i == 1 )
         z_estimate(:,i) = zs(:,i) + kalm(:,:,i) * (y(1) - C * zs(:,1));
     else
-        z_estimate(:,i) = A * z_estimate(:, i-1) + B * u(:,i-1) + ...
-            kalm(:,:,i) * (y(i) - C * ( A * z_estimate(:,i-1) + B * u(:,i-1)));
+        z_estimate(:,i) = A * z_estimate(:, i-1) + B * us(:,i-1) + ...
+            kalm(:,:,i) * (y(i) - C * ( A * z_estimate(:,i-1) + B * us(:,i-1)));
     end
     
-    us(i) = K(i) * z_estimate(:,i);
+    us(i) = K(:,:,i) * z_estimate(:,i);
     
-    zs(:,i+1) = A * zs(:,i) + B * us(i) + omega;
+    zs(:,i+1) = A * zs(:,i) + B * us(i) + omega(:,i);
     
 end
 
@@ -122,11 +126,7 @@ end
 
 % Compute zd2
 
-zd2 = zeros(dim_state, dim);
-zd2(:,1) = z0;
-for t = 1 : length(t) - 1
-    zd2(:,t+1) = A * zd2(:,t) + eta(:,t);
-end
+[K, Kg, zd2, g] = Riccati_nonStandard_LQG(M, N, MT, eta, A, B, C, z0, t);
 
 % Trovo il riferimento -> il segnale dove sono - dove voglio essere
 rt = -zd2 + z_hat;
@@ -135,7 +135,6 @@ rt = -zd2 + z_hat;
 ud = zeros(1, length(t));
 zd1 = zeros(2, length(t));
 
-% TODO: Calcolo le matrici K, Kg e g per il controllo LQT (CAMBIA con quello da slide)
 for i = 1 : length(t)-1
     ud(:,i) = K(:,i) * zd1(:,i) + Kg(:,i) * g(i+1);
     
@@ -143,6 +142,7 @@ for i = 1 : length(t)-1
 end
 
 % Ora combino tutte le componenti 
+z = zs + zd1 + zd2;
 
 % Evoluzione del sistema controllato -> SBAGLIATO
 % zc = zeros(2, length(t));
