@@ -92,6 +92,12 @@ for k = 1 : length(t)-1
     
     % Calcolo del controllo
     q(k) = K(:,:,k) * (zc(:,k) - z_d2(:,k)) + Kg(:,:,k) * g(:,k+1);
+    
+    if (q(k) > 1000)
+        q(k) = 1000;
+    elseif (q(k) < -1000)
+        q(k) = -1000;
+    end
 
     % Evoluzione del sistema
     zc(:,k+1) = A * zc(:,k) + B * q(:,k) + mi(:,k) + omega(:,k);
@@ -100,5 +106,5 @@ for k = 1 : length(t)-1
 end
 
 %stairs(t, (zc(1,:) + z_hat(1,:))');
-plot(t, (zc(1,:) + z_hat(1,:))', t, z_hat(1,:)', t, theta_a, t, (zc(2,:) + z_hat(2,:))');
-legend('theta_c controlled','z_hat','theta_a', 'thata_f_controlled');
+plot(t, (zc(1,:) + z_hat(1,:))', t, z_hat(1,:)');
+legend('theta_c controlled','z_hat');
