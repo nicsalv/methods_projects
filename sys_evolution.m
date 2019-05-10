@@ -6,14 +6,14 @@ clear;
 clc;
 
 % Raccolta dei dati dal file Excel
-theta_a = xlsread('dati.xlsx', 'F1:F25');
+theta_a_init = xlsread('dati.xlsx', 'F1:F25');
 theta_c_star = xlsread('dati.xlsx', 'C1:C25');
 
 % Parametri temporali
 T = 24; % Orizzonte
 deltaT = 1 / 3600; % Un secondo
 t = 0 : deltaT : T; % Asse dei tempi
-hours = (0 : length(theta_a)-1)'; % Indice delle ore per le temperature
+hours = (0 : length(theta_a_init)-1)'; % Indice delle ore per le temperature
 
 % Costanti numeriche
 cc = 2.15;
@@ -117,7 +117,7 @@ end
 % Si tiene conto del disturbo deterministico theta_a.
 
 % Disturbo deterministico (scalato)
-theta_a = interp1(hours, theta_a, t);
+theta_a = interp1(hours, theta_a_init, t);
 mi = zeros(2, length(t));
 for i = 1 : length(t)
     mi(:,i) = theta_a(i) * Ba;
@@ -156,4 +156,18 @@ legend('u');
 
 subplot(1,2,2);
 stairs(t, [z' z_hat(1,:)' theta_a']);
-legend('theta_c', 'theta_f', 'thetaC*', 'theta_a');
+legend('theta_c', 'theta_f', 'theta_c*', 'theta_a');
+
+% Performance di controllo
+% Errore qudratico medio
+mse = sum((z(1,:) - z_hat(1,:)).^2) / length(t);
+
+% Deviazione massima di temperatura
+max_abs_dev = max(abs((z(1,:) - z_hat(1,:))));
+
+% Consumo di energia nelle 24 ore
+energy = sum(u);
+% Consumo celle frigo da internet: da 1.41e7 a 2.47e7 J/24h
+
+% Varianza del controllo
+u_var = var(u);
