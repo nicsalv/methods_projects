@@ -50,120 +50,110 @@ csi_f = csi_std .* randn(1, length(t)-1); % Rumore sull'uscita
 stats = [mean(omega_f) std(omega_f) var(omega_f)];
 
 % Variabili di interesse
-z = zeros(2, length(t));
 q = zeros(1, length(t)-1);
 y = zeros(1, length(t));
-z(:,1) = [0; 291]; % Si parte da un punto già ottimo
 
 % Segnale da inseguire
 z_hat = [interp1(hours, theta_c_star, t); zeros(1, length(t))];
 
-theta_a = interp1(hours, theta_a, t); % Disturbo deterministico
-eta = zeros(2, length(t)-1); % Sequenze note
-mi = zeros(2, length(t)-1);
-
 % Discretizzazione delle matrici
-A = A .* deltaT + eye(size(A));
-B = deltaT .* B;
-Ba = deltaT .* Ba;
+A = A * deltaT + eye(size(A));
+B = deltaT * B;
+Ba = deltaT * Ba;
 
-% Risposta del sistema ad un ingresso nullo
-for k = 1 : length(t) - 1
-    % Salvataggio delle sequenze note (servono per il controllo)
-    eta(:,k) = Ba * theta_a(k);
-    
-    % La k-esima colonna di x corrisponde all'istante k*deltaT
-    z(:,k+1) = A * z(:,k) + mi(:,k) + omega(:,k);
-    y(k) = C * z(:,k) + csi_f(k);
-end
+% Controllo LQG/LQT come indicato nel paper: parte stocastica del sistema.
+% Si risolve mediante un LQG standard,
+% trascurando il disturbo deterministico.
 
-% Controllo LQG/LQT come indicato nel paper
+Q_var = cov(omega'); % Covarianza del rumore sullo stato
+R_var = csi_std^2; % Covarianza del rumore sull'uscita
+SIGMA_var = eye(2); % Covarianza della stima iniziale dello stato
+[sigma, K_kalm] = kalmanFilter(A, C, Q_var, R_var, SIGMA_var, t);
 
-% Calcolo del controllo
-M = [1 0; 0 0.0001]; % Si vuole inseguire solo una delle due componenti
-N = 1; % Controllo scalare
+% Parte stocastica del controllo
+u_s = zeros(1, length(t));
+
+% Parte stocastica dello stato
+z_s = zeros(2, length(t));
+z_estimated = zeros(2, length(t));
+
+% Determinazione della matrice K per il controllo ottimo
+M = [1 0; 0 1e-6]; % Si vuole inseguire solo una delle due componenti
+N = 1e-5; % Controllo scalare
 MT = M;
-%[K,Kg,z_d2,g] = Riccati_nonStandard_LQG(M, N, MT, mi, A, B, z(:,1), t);
-
-z0 = [0 291]';
-
-% Parte stocastica del sistema -> trascuro theta_a -> LQG
-
-% TODO: calcola matrici di covarianza
-Q_var = [var(omega(1,:)) 0; 0 var(omega(2,:))];
-R_var = .5;
-SIGMA_var = eye(2);
-[sigma, kalm] = kalmanFilter(A, C, Q_var, R_var, SIGMA_var, t);
-
-us = zeros(1, length(t));
-
-zs = zeros(2, length(t));
-z_estimate = zeros(2, length(t));
-
-zs(:,1) = z0;
-
-% compute k for control -> Riccati_P_K ?!?
 [P, K, K_infinito] = riccati_P_K(A, B, M, MT, N, t);
 
-for i = 1 : length(t) - 1
+% Stima e conti all'istante iniziale
+y(1) = C * z_s(:,1) + csi_f(1);
+z_estimated(:,1) = z_s(:,1) + K_kalm(:,:,1) * (y(1) - C*z_s(:,1));
+u_s(1) = K(:,:,1) * z_estimated(:,1);
+z_s(:,2) = A * z_s(:,1) + B * u_s(1) + omega(:,1);
+
+for i = 2 : length(t) - 1
+    % Misurazione dell'uscita del sistema
+    y(i) = C * z_s(:,i) + csi_f(i);
     
-    y(i) = C * zs(:,i) + + csi_f(i);
+    % Stima dello stato mediante Kalman
+    sys_kalm = A * z_estimated(:,i-1) + B * u_s(:,i-1);
+    z_estimated(:,i) = sys_kalm + K_kalm(:,:,i) * (y(i) - C * sys_kalm); 
     
-    if ( i == 1 )
-        z_estimate(:,i) = zs(:,i) + kalm(:,:,i) * (y(1) - C * zs(:,1));
-    else
-        z_estimate(:,i) = A * z_estimate(:, i-1) + B * us(:,i-1) + ...
-            kalm(:,:,i) * (y(i) - C * ( A * z_estimate(:,i-1) + B * us(:,i-1)));
-    end
+    % Calcolo del controllo
+    u_s(i) = K(:,:,i) * z_estimated(:,i);
     
-    us(i) = K(:,:,i) * z_estimate(:,i);
-    
-    zs(:,i+1) = A * zs(:,i) + B * us(i) + omega(:,i);
-    
+    % Evoluzione del sistema affetto dal controllo ottimo
+    z_s(:,i+1) = A * z_s(:,i) + B * u_s(i) + omega(:,i);
 end
 
-% Parte deterministica del sistema -> considera theta_a -> LQT
+% subplot(2,1,1);
+% stairs(t, [z_s(1,:)', z_estimated(1,:)']);
+% legend('z_s', 'z_estimated');
+% 
+% subplot(2,1,2);
+% stairs(t, y');
+% legend('y');
 
-% Compute zd2
 
-[K, Kg, zd2, g] = Riccati_nonStandard_LQG(M, N, MT, eta, A, B, C, z0, t);
+% Parte deterministica del sistema.
+% Si tiene conto del disturbo deterministico theta_a.
 
-% Trovo il riferimento -> il segnale dove sono - dove voglio essere
-rt = -zd2 + z_hat;
-    % Dove inserisco il riferimento ?!?!?
+% Disturbo deterministico (scalato)
+theta_a = interp1(hours, theta_a, t);
+mi = zeros(2, length(t));
+for i = 1 : length(t)
+    mi(:,i) = theta_a(i) * Ba;
+end
 
-ud = zeros(1, length(t));
-zd1 = zeros(2, length(t));
+% Calcolo di z_d2
+z_d2 = zeros(2, length(t));
+z_d2(:,1) = [293; 291];
+for i = 1 : length(t) - 1
+    z_d2(:,i+1) = A * z_d2(:,i) + mi(:,i);
+end
+
+% Segnale da tracciare. Il riferimento (theta_c_star) è in z_hat.
+r = z_hat - z_d2;
+
+[K, Kg, g] = Riccati_nonStandard_LQG(M, N, MT, A, B, r, t);
+
+u_d = zeros(1, length(t));
+z_d1 = zeros(2, length(t));
 
 for i = 1 : length(t)-1
-    ud(:,i) = K(:,i) * zd1(:,i) + Kg(:,i) * g(i+1);
+    % Calcolo del controllo ottimo
+    u_d(:,i) = K(:,:,i) * z_d1(:,i) + Kg(:,:,i) * g(:,i+1);
     
-    zd1(:,i+1) = A * zd1(:, i) + B * ud(i);
+    % Evoluzione del sistema affetto dal controllo
+    z_d1(:,i+1) = A * z_d1(:, i) + B * u_d(i);
 end
 
-% Ora combino tutte le componenti 
-z = zs + zd1 + zd2;
+% Ricostruzione del controllo e dello completo
+u = u_d + u_s;
+z = z_s + z_d1 + z_d2;
 
-% Evoluzione del sistema controllato -> SBAGLIATO
-% zc = zeros(2, length(t));
-% zc(:,1) = [0; 291];
-% for k = 1 : length(t)-1
-%     
-%     % Calcolo del controllo
-%     q(k) = K(:,:,k) * (zc(:,k) - z_d2(:,k)) + Kg(:,:,k) * g(:,k+1);
-%     
-%     if (q(k) > 1000)
-%         q(k) = 1000;
-%     elseif (q(k) < -1000)
-%         q(k) = -1000;
-%     end
-% 
-%     % Evoluzione del sistema
-%     zc(:,k+1) = A * zc(:,k) + B * q(:,k) + mi(:,k) + omega(:,k);
-%     y(k) = C * zc(:,k) + csi_f(k);
-% 
-% end
-% 
-% %stairs(t, (zc(1,:) + z_hat(1,:))');
-% plot(t, (zc(1,:) + z_hat(1,:))', t, z_hat(1,:)');
-% legend('theta_c controlled','z_hat');
+subplot(1,2,1);
+stairs(t, u');
+legend('u');
+
+subplot(1,2,2);
+stairs(t, [z' z_hat(1,:)' theta_a']);
+legend('theta_c', 'theta_f', 'thetaC*', 'theta_a');
