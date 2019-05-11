@@ -1,4 +1,4 @@
-function [P, K, K_infinito] = riccati_P_K(A, B, Q, Qf, R, T)
+function [P, K] = riccati_P_K(A, B, Q, Qf, R, T)
     N = length(T)-1;
     P = zeros(size(Q,1), size(Q,2), N+1);
 
@@ -26,5 +26,4 @@ function [P, K, K_infinito] = riccati_P_K(A, B, Q, Qf, R, T)
 %     end
 % 
 %     K_infinito = K_inf(:,:,1);
-      K_infinito = K(:,:,1);
 end

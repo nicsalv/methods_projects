@@ -61,100 +61,39 @@ A = A * deltaT + eye(size(A));
 B = deltaT * B;
 Ba = deltaT * Ba;
 
-% Controllo LQG/LQT come indicato nel paper: parte stocastica del sistema.
-% Si risolve mediante un LQG standard,
-% trascurando il disturbo deterministico.
-
+% Calcolo Kalman
 Q_var = cov(omega'); % Covarianza del rumore sullo stato
 R_var = csi_std^2; % Covarianza del rumore sull'uscita
 SIGMA_var = eye(2); % Covarianza della stima iniziale dello stato
 [sigma, K_kalm] = kalmanFilter(A, C, Q_var, R_var, SIGMA_var, t);
 
-% Parte stocastica del controllo
-u_s = zeros(1, length(t));
-
-% Parte stocastica dello stato
-z_s = zeros(2, length(t));
-z_estimated = zeros(2, length(t));
-
-% Determinazione della matrice K per il controllo ottimo
+% Definisco le matrici di costo
 M = [1 0; 0 1e-6]; % Si vuole inseguire solo una delle due componenti
-N = 1e-5; % Controllo scalare
+N = 1e-4; % Controllo scalare
 MT = M;
-[P, K, K_infinito] = riccati_P_K(A, B, M, MT, N, t);
-
-% Stima e conti all'istante iniziale
-y(1) = C * z_s(:,1) + csi_f(1);
-z_estimated(:,1) = z_s(:,1) + K_kalm(:,:,1) * (y(1) - C*z_s(:,1));
-u_s(1) = K(:,:,1) * z_estimated(:,1);
-z_s(:,2) = A * z_s(:,1) + B * u_s(1) + omega(:,1);
-
-for i = 2 : length(t) - 1
-    % Misurazione dell'uscita del sistema
-    y(i) = C * z_s(:,i) + csi_f(i);
-    
-    % Stima dello stato mediante Kalman
-    sys_kalm = A * z_estimated(:,i-1) + B * u_s(:,i-1);
-    z_estimated(:,i) = sys_kalm + K_kalm(:,:,i) * (y(i) - C * sys_kalm); 
-    
-    % Calcolo del controllo
-    u_s(i) = K(:,:,i) * z_estimated(:,i);
-    
-    % Evoluzione del sistema affetto dal controllo ottimo
-    z_s(:,i+1) = A * z_s(:,i) + B * u_s(i) + omega(:,i);
-end
-
-% subplot(2,1,1);
-% stairs(t, [z_s(1,:)', z_estimated(1,:)']);
-% legend('z_s', 'z_estimated');
-% 
-% subplot(2,1,2);
-% stairs(t, y');
-% legend('y');
-
-
-% Parte deterministica del sistema.
-% Si tiene conto del disturbo deterministico theta_a.
 
 % Disturbo deterministico (scalato)
 theta_a = interp1(hours, theta_a_init, t);
 mi = zeros(2, length(t));
 for i = 1 : length(t)
-    mi(:,i) = theta_a(i) * Ba;
+   mi(:,i) = theta_a(i) * Ba;
 end
 
 % Calcolo di z_d2
 z_d2 = zeros(2, length(t));
 z_d2(:,1) = [293; 291];
 for i = 1 : length(t) - 1
-    z_d2(:,i+1) = A * z_d2(:,i) + mi(:,i);
+   z_d2(:,i+1) = A * z_d2(:,i) + mi(:,i);
 end
 
-% Segnale da tracciare. Il riferimento (theta_c_star) è in z_hat.
-r = z_hat - z_d2;
+% Effettuo il controllo "standard"
+[u, z] = standard_control(A, B, C, omega, csi_f, M, MT, N, K_kalm, z_hat, z_d2, t);
 
-[K, Kg, g] = Riccati_nonStandard_LQG(M, N, MT, A, B, r, t);
-
-u_d = zeros(1, length(t));
-z_d1 = zeros(2, length(t));
-
-for i = 1 : length(t)-1
-    % Calcolo del controllo ottimo
-    u_d(:,i) = K(:,:,i) * z_d1(:,i) + Kg(:,:,i) * g(:,i+1);
-    
-    % Evoluzione del sistema affetto dal controllo
-    z_d1(:,i+1) = A * z_d1(:, i) + B * u_d(i);
-end
-
-% Ricostruzione del controllo e dello completo
-u = u_d + u_s;
-z = z_s + z_d1 + z_d2;
-
-subplot(1,2,1);
-stairs(t, u');
-legend('u');
-
-subplot(1,2,2);
+% subplot(1,2,1);
+% stairs(t, u');
+% legend('u');
+% 
+% subplot(1,2,2);
 stairs(t, [z' z_hat(1,:)' theta_a']);
 legend('theta_c', 'theta_f', 'theta_c*', 'theta_a');
 
@@ -166,8 +105,34 @@ mse = sum((z(1,:) - z_hat(1,:)).^2) / length(t);
 max_abs_dev = max(abs((z(1,:) - z_hat(1,:))));
 
 % Consumo di energia nelle 24 ore
-energy = sum(u);
+energy = sum(abs(u));
 % Consumo celle frigo da internet: da 1.41e7 a 2.47e7 J/24h
 
 % Varianza del controllo
 u_var = var(u);
+
+% Risolvo il problema con rolling horizon optimization con time windows
+% differenti. 
+
+[u_cmp, z_cmp] = model_predictive_control(A, B, C, omega, csi_f, M, MT, N, K_kalm, z_hat, z_d2, t, 1 * 60);
+
+% Matlab toolbox -> https://it.mathworks.com/help/mpc/gs/control-of-a-multi-input-single-output-plant.html
+
+
+figure
+subplot(2,1,1)
+plot(0:Tf-1,y,0:Tf-1,r)
+title('Output')
+grid
+subplot(2,1,2)
+plot(0:Tf-1,u)
+title('Input')
+grid
+
+
+stairs(t, [z_cmp' z_hat(1,:)' theta_a']);
+legend('theta_c cmp', 'theta_f cmp', 'theta_c*', 'theta_a');
+
+
+% stairs(t, [z(1,:)' z_cmp(1,:)' z_hat(1,:)']);
+% legend('theta_c standard', 'theta_c cmp', 'theta_c STAR');
