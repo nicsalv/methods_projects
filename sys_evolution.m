@@ -6,11 +6,11 @@ clear;
 clc;
 
 % Raccolta dei dati dal file Excel
-theta_a_init = xlsread('dati.xlsx', 'F1:F9');
-theta_c_star = xlsread('dati.xlsx', 'C1:C9');
+theta_a_init = xlsread('dati.xlsx', 'F1:F25');
+theta_c_star = xlsread('dati.xlsx', 'C1:C25');
 
 % Parametri temporali
-T = 8; % Orizzonte
+T = 24; % Orizzonte
 deltaT = 1 / 3600; % Un secondo
 t = 0 : deltaT : T; % Asse dei tempi
 hours = (0 : length(theta_a_init)-1)'; % Indice delle ore per le temperature
@@ -134,5 +134,5 @@ u_var = var(u);
 % legend('theta_c cmp', 'theta_f cmp', 'theta_c*', 'theta_a');
 
 
-stairs(t, [z(1,:)' z_cmp(1,:)' z_hat(1,:)']);
-legend('theta_c standard', 'theta_c cmp', 'theta_c STAR');
+stairs(t, [z(1,:)' z_cmp(1,:)' z_hat(1,:)' theta_a']);
+legend('theta_c standard', 'theta_c cmp', 'theta_c STAR', 'theta_a');

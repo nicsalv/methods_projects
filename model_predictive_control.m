@@ -50,21 +50,21 @@ function [u, z] = model_predictive_control(A, B, C, omega, csi_f, M, MT, N, K_ka
     % temporale
     r = z_hat - z_d2;
 
-%    [K, Kg, g] = Riccati_nonStandard_LQG(M, N, MT, A, B, r, t);
+   [K, Kg, g] = Riccati_nonStandard_LQG(M, N, MT, A, B, r, t);
 
     for i = 1 : length(t)-1
-        if ((length(t) - i) > timeWindow)
-            time = i:(i+timeWindow-1);
-        else
-            time = i:length(t);
-        end
-        rTemp(:,time) = r(:,time);
+%         if ((length(t) - i) > timeWindow)
+%             time = i:(i+timeWindow-1);
+%         else
+%             time = i:length(t);
+%         end
+%         rTemp(:,time) = r(:,time);
 
         [K, Kg, g] = Riccati_nonStandard_LQG(M, N, MT, A, B, rTemp, time);
         
         % Calcolo del controllo ottimo
-%         u_d(:,i) = K(:,:,i) * z_d1(:,i) + Kg(:,:,i) * g(:,i+1);
-        u_d(:,i) = K(:,:,1) * z_d1(:,i) + Kg(:,:,1) * g(:,2);
+        u_d(:,i) = K(:,:,i) * z_d1(:,i) + Kg(:,:,i) * g(:,i+1);
+%         u_d(:,i) = K(:,:,1) * z_d1(:,i) + Kg(:,:,1) * g(:,2);
 
         % Evoluzione del sistema affetto dal controllo
         z_d1(:,i+1) = A * z_d1(:, i) + B * u_d(i);
