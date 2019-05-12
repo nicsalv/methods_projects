@@ -6,11 +6,11 @@ clear;
 clc;
 
 % Raccolta dei dati dal file Excel
-theta_a_init = xlsread('dati.xlsx', 'F1:F25');
-theta_c_star = xlsread('dati.xlsx', 'C1:C25');
+theta_a_init = xlsread('dati.xlsx', 'F1:F9');
+theta_c_star = xlsread('dati.xlsx', 'C1:C9');
 
 % Parametri temporali
-T = 24; % Orizzonte
+T = 8; % Orizzonte
 deltaT = 1 / 3600; % Un secondo
 t = 0 : deltaT : T; % Asse dei tempi
 hours = (0 : length(theta_a_init)-1)'; % Indice delle ore per le temperature
@@ -94,8 +94,8 @@ end
 % legend('u');
 % 
 % subplot(1,2,2);
-stairs(t, [z' z_hat(1,:)' theta_a']);
-legend('theta_c', 'theta_f', 'theta_c*', 'theta_a');
+% stairs(t, [z' z_hat(1,:)' theta_a']);
+% legend('theta_c', 'theta_f', 'theta_c*', 'theta_a');
 
 % Performance di controllo
 % Errore qudratico medio
@@ -119,20 +119,20 @@ u_var = var(u);
 % Matlab toolbox -> https://it.mathworks.com/help/mpc/gs/control-of-a-multi-input-single-output-plant.html
 
 
-figure
-subplot(2,1,1)
-plot(0:Tf-1,y,0:Tf-1,r)
-title('Output')
-grid
-subplot(2,1,2)
-plot(0:Tf-1,u)
-title('Input')
-grid
+% figure
+% subplot(2,1,1)
+% plot(0:Tf-1,y,0:Tf-1,r)
+% title('Output')
+% grid
+% subplot(2,1,2)
+% plot(0:Tf-1,u)
+% title('Input')
+% grid
 
 
-stairs(t, [z_cmp' z_hat(1,:)' theta_a']);
-legend('theta_c cmp', 'theta_f cmp', 'theta_c*', 'theta_a');
+% stairs(t, [z_cmp' z_hat(1,:)' theta_a']);
+% legend('theta_c cmp', 'theta_f cmp', 'theta_c*', 'theta_a');
 
 
-% stairs(t, [z(1,:)' z_cmp(1,:)' z_hat(1,:)']);
-% legend('theta_c standard', 'theta_c cmp', 'theta_c STAR');
+stairs(t, [z(1,:)' z_cmp(1,:)' z_hat(1,:)']);
+legend('theta_c standard', 'theta_c cmp', 'theta_c STAR');
