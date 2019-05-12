@@ -60,7 +60,7 @@ function [u, z] = model_predictive_control(A, B, C, omega, csi_f, M, MT, N, K_ka
 %         end
 %         rTemp(:,time) = r(:,time);
 
-        [K, Kg, g] = Riccati_nonStandard_LQG(M, N, MT, A, B, rTemp, time);
+%         [K, Kg, g] = Riccati_nonStandard_LQG(M, N, MT, A, B, rTemp, time);
         
         % Calcolo del controllo ottimo
         u_d(:,i) = K(:,:,i) * z_d1(:,i) + Kg(:,:,i) * g(:,i+1);
