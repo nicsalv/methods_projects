@@ -2,12 +2,16 @@ function [u, z] = standard_control(A, B, C, omega, csi_f, M, MT, N, K_kalm, z_ha
     % Controllo LQG/LQT come indicato nel paper: parte stocastica del sistema.
     % Si risolve mediante un LQG standard,
     % trascurando il disturbo deterministico.
+    
+    % Uscita del sistema
+    y = zeros(1, length(t));
 
     % Parte stocastica del controllo
     u_s = zeros(1, length(t));
 
     % Parte stocastica dello stato
     z_s = zeros(2, length(t));
+    % z_s(:,1) = [10 -15]'; % Utile per verificare LQG
     z_estimated = zeros(2, length(t));
 
     % Determinazione della matrice K per il controllo ottimo
@@ -33,14 +37,15 @@ function [u, z] = standard_control(A, B, C, omega, csi_f, M, MT, N, K_kalm, z_ha
         % Evoluzione del sistema affetto dal controllo ottimo
         z_s(:,i+1) = A * z_s(:,i) + B * u_s(i) + omega(:,i);
     end
+    
+    % Utile per apprezzare le differenze tra questo e il receding horizon.
+%     subplot(2,1,1);
+%     stairs(t, [z_s(1,:)', z_estimated(1,:)']);
+%     legend('z_s', 'z_estimated');
 
-    % subplot(2,1,1);
-    % stairs(t, [z_s(1,:)', z_estimated(1,:)']);
-    % legend('z_s', 'z_estimated');
-    % 
-    % subplot(2,1,2);
-    % stairs(t, y');
-    % legend('y');
+%     subplot(2,1,2);
+%     stairs(t, y');
+%     legend('y');
 
 
     % Parte deterministica del sistema.
