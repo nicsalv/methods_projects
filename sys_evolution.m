@@ -42,10 +42,10 @@ C = [0 1];
 % Distrubi stocastici
 c_std = deltaT / Cc; % Deviazioni standard (radici della Varianza)
 f_std = deltaT / Cf;
-csi_std = .5^.5;
+csi_std = 10^.5;
 omega_c = c_std .* randn(1, length(t)-1);
 omega_f = f_std .* randn(1, length(t)-1);
-omega = [omega_c; omega_f]; % Rumore sullo stato
+omega = 100 .* [omega_c; omega_f]; % Rumore sullo stato
 csi_f = csi_std .* randn(1, length(t)-1); % Rumore sull'uscita
 stats = [mean(omega_f) std(omega_f) var(omega_f)];
 
@@ -64,8 +64,8 @@ SIGMA_var = eye(2); % Covarianza della stima iniziale dello stato
 [sigma, K_kalm] = kalmanFilter(A, C, Q_var, R_var, SIGMA_var, t);
 
 % Definisco le matrici di costo
-M = [10 0; 0 1e-6]; % Si vuole inseguire solo una delle due componenti
-N = 1e-4; % Controllo scalare
+M = [1 0; 0 1e-6]; % Si vuole inseguire solo una delle due componenti
+N = 1e-3; % Controllo scalare
 MT = M;
 
 % Disturbo deterministico (scalato)
@@ -90,8 +90,8 @@ stairs(t, u');
 legend('u');
 
 subplot(4,1,2);
-stairs(t, [z' z_hat(1,:)' theta_a']);
-legend('theta_c', 'theta_f', 'theta_c*', 'theta_a');
+stairs(t, [z(1,:)' z_hat(1,:)' theta_a']);
+legend('theta_c', 'theta_c*', 'theta_a');
 
 % Performance di controllo
 % Errore qudratico medio
@@ -107,10 +107,16 @@ energy = sum(abs(u));
 % Varianza del controllo
 u_var = var(u);
 
+cost = 0;
+for i = 1:length(t)-1
+   cost = cost + z(:,i)' * M * z(:,i) + u(:,i)' * N * u(:,i);    
+end
+cost = cost + z(:,end)' * MT * z(:,end);
+
 % Risolvo il problema con rolling horizon optimization con time windows
 % differenti. 
 
-[u_mpc, z_mpc] = model_predictive_control(A, B, C, omega, csi_f, M, MT, N, K_kalm, z_hat, z_d2, t, 9 * 60);
+[u_mpc, z_mpc] = model_predictive_control(A, B, C, omega, csi_f, M, MT, N, K_kalm, z_hat, z_d2, t, 1 * 60);
 
 % Performance di controllo
 % Errore qudratico medio
@@ -126,11 +132,19 @@ energy_mpc = sum(abs(u_mpc));
 % Varianza del controllo
 u_var_mpc = var(u_mpc);
 
+cost_mpc = 0;
+for i = 1:length(t)-1
+   cost_mpc = cost_mpc + z_mpc(:,i)' * M * z_mpc(:,i) + u_mpc(:,i)' * N * u_mpc(:,i);    
+end
+cost_mpc = cost_mpc + z_mpc(:,end)' * MT * z_mpc(:,end);
+
 % Differenze tra le prestazioni
 diff_mse = mse - mse_mpc;
 diff_max_abs_dev = max_abs_dev - max_abs_dev_mpc;
 diff_energy = energy - energy_mpc;
 diff_u_var = u_var - u_var_mpc;
+
+diff_cost = cost - cost_mpc;
 
 % Matlab toolbox -> https://it.mathworks.com/help/mpc/gs/control-of-a-multi-input-single-output-plant.html
 
@@ -139,8 +153,8 @@ stairs(t, u_mpc');
 legend('u cmp');
 
 subplot(4,1,4);
-stairs(t, [z_mpc' z_hat(1,:)' theta_a']);
-legend('theta_c cmp', 'theta_f cmp', 'theta_c*', 'theta_a');
+stairs(t, [z_mpc(1,:)' z_hat(1,:)' theta_a']);
+legend('theta_c cmp', 'theta_c*', 'theta_a');
 
 
 % stairs(t, [z(1,:)' z_mpc(1,:)' z_hat(1,:)' theta_a']);

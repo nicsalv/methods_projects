@@ -9,7 +9,7 @@ function [u, z] = model_predictive_control(A, B, C, omega, csi_f, M, MT, N, K_ka
 
     % inizializzo i vettori degli stati
     z_s = zeros(2, length(t));
-    % z_s(:,1) = [10 -15]'; % Utile per verificare LQG
+    z_s(:,1) = [-10 -15]'; % Utile per verificare LQG
     z_estimated = zeros(2, length(t));
     z_d1 = zeros(2, length(t));
     
@@ -35,8 +35,12 @@ function [u, z] = model_predictive_control(A, B, C, omega, csi_f, M, MT, N, K_ka
         y(i) = C * z_s(:,i) + csi_f(i);
 
         % Stima dello stato mediante Kalman
+        %z_estimated(:,i) = sys_kalm + K_kalm(:,:,i) * (y(i) - C*sys_kalm);
+        
+        % In questo caso faccio la stima solo al primo istante e poi la
+        % "propago"
         sys_kalm = A * z_estimated(:,i-1) + B * u_s(:,i-1);
-        z_estimated(:,i) = sys_kalm + K_kalm(:,:,i) * (y(i) - C*sys_kalm);
+        z_estimated(:,i) = sys_kalm;
         
         % Calcolo del controllo
         u_s(i) = K(:,:,1) * z_estimated(:,i);
