@@ -64,8 +64,8 @@ SIGMA_var = eye(2); % Covarianza della stima iniziale dello stato
 [sigma, K_kalm] = kalmanFilter(A, C, Q_var, R_var, SIGMA_var, t);
 
 % Definisco le matrici di costo
-M = [1 0; 0 1e-6]; % Si vuole inseguire solo una delle due componenti
-N = 1e-3; % Controllo scalare
+M = [10 0; 0 1e-6]; % Si vuole inseguire solo una delle due componenti
+N = 1e-4; % Controllo scalare
 MT = M;
 
 % Disturbo deterministico (scalato)
@@ -85,13 +85,13 @@ end
 % Effettuo il controllo "standard"
 [u, z] = standard_control(A, B, C, omega, csi_f, M, MT, N, K_kalm, z_hat, z_d2, t);
 
-% subplot(1,2,1);
-% stairs(t, u');
-% legend('u');
-% 
-% subplot(1,2,2);
-% stairs(t, [z' z_hat(1,:)' theta_a']);
-% legend('theta_c', 'theta_f', 'theta_c*', 'theta_a');
+subplot(4,1,1);
+stairs(t, u');
+legend('u');
+
+subplot(4,1,2);
+stairs(t, [z' z_hat(1,:)' theta_a']);
+legend('theta_c', 'theta_f', 'theta_c*', 'theta_a');
 
 % Performance di controllo
 % Errore qudratico medio
@@ -134,21 +134,14 @@ diff_u_var = u_var - u_var_mpc;
 
 % Matlab toolbox -> https://it.mathworks.com/help/mpc/gs/control-of-a-multi-input-single-output-plant.html
 
+subplot(4,1,3);
+stairs(t, u_mpc');
+legend('u cmp');
 
-% figure
-% subplot(2,1,1)
-% plot(0:Tf-1,y,0:Tf-1,r)
-% title('Output')
-% grid
-% subplot(2,1,2)
-% plot(0:Tf-1,u)
-% title('Input')
-% grid
+subplot(4,1,4);
+stairs(t, [z_mpc' z_hat(1,:)' theta_a']);
+legend('theta_c cmp', 'theta_f cmp', 'theta_c*', 'theta_a');
 
 
-% stairs(t, [z_cmp' z_hat(1,:)' theta_a']);
-% legend('theta_c cmp', 'theta_f cmp', 'theta_c*', 'theta_a');
-
-
-stairs(t, [z(1,:)' z_mpc(1,:)' z_hat(1,:)' theta_a']);
-legend('theta_c standard', 'theta_c cmp', 'theta_c STAR', 'theta_a');
+% stairs(t, [z(1,:)' z_mpc(1,:)' z_hat(1,:)' theta_a']);
+% legend('theta_c standard', 'theta_c cmp', 'theta_c STAR', 'theta_a');
