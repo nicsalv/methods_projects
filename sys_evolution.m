@@ -42,17 +42,17 @@ C = [0 1];
 % Distrubi stocastici
 c_std = deltaT / Cc; % Deviazioni standard (radici della Varianza)
 f_std = deltaT / Cf;
-csi_std = 10^.5;
+csi_std = .5^.5;
 omega_c = c_std .* randn(1, length(t)-1);
 omega_f = f_std .* randn(1, length(t)-1);
-omega = 100 .* [omega_c; omega_f]; % Rumore sullo stato
+omega = 10 .* [omega_c; omega_f]; % Rumore sullo stato
 csi_f = csi_std .* randn(1, length(t)-1); % Rumore sull'uscita
 stats = [mean(omega_f) std(omega_f) var(omega_f)];
 
 % Segnale da inseguire
 z_hat = [interp1(hours, theta_c_star, t); zeros(1, length(t))];
 
-% Discretizzazione delle matrici
+% Discretizzazione delle matrici -> usando l'approssimazione di Eulero
 A = A * deltaT + eye(size(A));
 B = deltaT * B;
 Ba = deltaT * Ba;

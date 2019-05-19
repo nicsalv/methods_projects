@@ -9,7 +9,7 @@ function [u, z] = model_predictive_control(A, B, C, omega, csi_f, M, MT, N, K_ka
 
     % inizializzo i vettori degli stati
     z_s = zeros(2, length(t));
-    z_s(:,1) = [-10 -15]'; % Utile per verificare LQG
+    % z_s(:,1) = [-15 -10]'; % Utile per verificare LQG
     z_estimated = zeros(2, length(t));
     z_d1 = zeros(2, length(t));
     
