@@ -13,8 +13,8 @@ function [scheduled] = JohnsonAlgorithm(jobs, M1, M2)
         A = [M1(jobs) M2(jobs)];
        [m, index] = min(A);
 
-       % if i (position of minimun) is < of 7 -> the job will be scheduled on
-       % M1 first
+       % if i (position of minimun) is less than 7, the job will be
+       % scheduled on M1
        if(index <= nJob)
            scheduled(head) = jobs(index);
 
@@ -24,6 +24,7 @@ function [scheduled] = JohnsonAlgorithm(jobs, M1, M2)
            % increment head index
            head = head + 1;
        else
+           % Schedule job on M2
            jobIndex = index - nJob;
            scheduled(tail) = jobs(jobIndex);
 
@@ -33,6 +34,6 @@ function [scheduled] = JohnsonAlgorithm(jobs, M1, M2)
            % decrement head index
            tail = tail - 1;
        end
-       nJob = nJob -1;
+       nJob = nJob - 1;
     end
 end
