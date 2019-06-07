@@ -1,51 +1,72 @@
 clear all;
 clc;
 
-% % Read value from matlab file
-% % Causes on order: Workmen,Materials,Machines,Roller
-% [~, causes] = xlsread('Exercise1.xlsx','B2:B5');
-% morning = xlsread('Exercise1.xlsx', 'C2:C5')';
-% evening = xlsread('Exercise1.xlsx', 'C6:C9')';
-% allDay = morning + evening;
-% 
-% % Histogram
-% figure(1);
-% subplot(3,1,1);
-% histogram('Categories',causes,'BinCounts',morning);
-% title('Histogram of Morning shift');
-% 
-% subplot(3,1,2);
-% histogram('Categories',causes,'BinCounts',evening);
-% title('Histogram of Evening shift');
-% 
-% subplot(3,1,3);
-% histogram('Categories',causes,'BinCounts',allDay);
-% title('Histogram of All day');
-% 
-% % Create pareto graph -> trova i problemi e gli assegna un peso
-% figure(2);
-% subplot(3,1,1);
-% pareto(morning, causes);
-% title('Pareto graph of Morning shift');
-% 
-% subplot(3,1,2);
-% pareto(evening, causes);
-% title('Pareto graph of Evening shift');
-% 
-% subplot(3,1,3);
-% pareto(allDay, causes);
-% title('Pareto graph of All day shift');
+% Read value from matlab file
+% Causes on order: Workmen,Materials,Machines,Roller
+[~, causes] = xlsread('Exercise1.xlsx','B2:B5');
+morning = xlsread('Exercise1.xlsx', 'C2:C5')';
+evening = xlsread('Exercise1.xlsx', 'C6:C9')';
+allDay = morning + evening;
 
-%% 
+% Histogram
+figure(1);
+subplot(3,1,1);
+histogram('Categories',causes,'BinCounts',morning);
+title('Histogram of Morning shift');
+
+subplot(3,1,2);
+histogram('Categories',causes,'BinCounts',evening);
+title('Histogram of Evening shift');
+
+subplot(3,1,3);
+histogram('Categories',causes,'BinCounts',allDay);
+title('Histogram of All day');
+
+% Create pareto graph -> trova i problemi e gli assegna un peso
+figure(2);
+subplot(3,1,1);
+pareto(morning, causes);
+title('Pareto graph of Morning shift');
+
+subplot(3,1,2);
+pareto(evening, causes);
+title('Pareto graph of Evening shift');
+
+subplot(3,1,3);
+pareto(allDay, causes);
+title('Pareto graph of All day shift');
+
 % "C" Control Chart controlchart
+% In such a case the incidence of defects might be modeled by a Poisson distribution
 
-% PER ORA SOLO TEST -> non è la versione finale
+indexForSum = 1:length(morning);
+morningTotal = sum(morning(indexForSum));
+eveningTotal = sum(evening(indexForSum));
+allDayTotal = sum(allDay(indexForSum));
 
-% NB: ? is the average number of defective items -> estimate it with Maximum likelihood estimator
-lambda = (312 + 245) / 2;  
+lambda = allDayTotal / 2;  
 size = [100 1];
 y = poissrnd(lambda, size);
 %plot(y);
 
-st = controlchart(y,'charttype',{'c'});
+% Crea dei casi potenzialmente critici
+minim = min(y);
+maxim = max(y);
+% std = std(y);
 
+% Define limit for disturb 
+m = -100;
+M = 100;
+
+mIndex = 1;
+MIndex = length(y);
+
+for i = 1:10
+    value = randi([m M]);
+    index = randi([mIndex MIndex]); 
+    y(index) = y(index) + value;
+end
+
+figure(3);
+controlchart(y,'charttype',{'c'});
+title('Control chart - all Day & all Causes');
