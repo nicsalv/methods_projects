@@ -1,8 +1,8 @@
-clear all;
+clear;
 clc;
 
 % Read value from matlab file
-% Causes on order: Workmen,Materials,Machines,Roller
+% Causes on order: Workmen, Materials, Machines, Roller
 [~, causes] = xlsread('Exercise1.xlsx','B2:B5');
 morning = xlsread('Exercise1.xlsx', 'C2:C5')';
 evening = xlsread('Exercise1.xlsx', 'C6:C9')';
@@ -36,36 +36,39 @@ subplot(3,1,3);
 pareto(allDay, causes);
 title('Pareto graph of All day shift');
 
-% "C" Control Chart controlchart
-% In such a case the incidence of defects might be modeled by a Poisson distribution
+% "C" Control Chart
+% In such a case the incidence of defects might be modeled
+% as a Poisson distribution
 
-indexForSum = 1:length(morning);
-morningTotal = sum(morning(indexForSum));
-eveningTotal = sum(evening(indexForSum));
-allDayTotal = sum(allDay(indexForSum));
+morningTotal = sum(morning);
+eveningTotal = sum(evening);
+allDayTotal = sum(allDay);
 
-lambda = allDayTotal / 2;  
-size = [100 1];
+lambda = allDayTotal / 2;
+size = [20 1];
 y = poissrnd(lambda, size);
 %plot(y);
 
-% Crea dei casi potenzialmente critici
+% Manipolazione della distribuzione per generare
+% situazioni fuori controllo.
 minim = min(y);
 maxim = max(y);
 % std = std(y);
 
-% Define limit for disturb 
+% Limiti di disturbo
 m = -100;
 M = 100;
 
-mIndex = 1;
-MIndex = length(y);
-
-for i = 1:10
-    value = randi([m M]);
-    index = randi([mIndex MIndex]); 
-    y(index) = y(index) + value;
-end
+numOfCases = 10;
+% for i = 1 : numOfCases
+%     % Valori casuali potenzialmente critici da inserire nel dataset
+%     criticalValue = randi([m M]);
+%     
+%     % Inserimento dei valori potenzialmente critici in posizioni casuali
+%     % del dataset
+%     criticalIndex = randi([1 length(y)]);
+%     y(criticalIndex) = y(criticalIndex) + criticalValue;
+% end
 
 figure(3);
 controlchart(y,'charttype',{'c'});
