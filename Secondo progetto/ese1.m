@@ -40,12 +40,14 @@ title('Pareto graph of All day shift');
 % In such a case the incidence of defects might be modeled
 % as a Poisson distribution
 
-morningTotal = sum(morning);
-eveningTotal = sum(evening);
-allDayTotal = sum(allDay);
+indexOfSum = [1 2 3 4];
 
-lambda = allDayTotal / 2;
-size = [20 1];
+morningTotal = sum(morning(indexOfSum));
+eveningTotal = sum(evening(indexOfSum));
+allDayTotal = sum(allDay(indexOfSum)) / 2;
+
+lambda = allDayTotal;
+size = [50 1];
 y = poissrnd(lambda, size);
 %plot(y);
 
@@ -56,19 +58,19 @@ maxim = max(y);
 % std = std(y);
 
 % Limiti di disturbo
-m = -100;
-M = 100;
+m = -80;
+M = 80;
 
 numOfCases = 10;
-% for i = 1 : numOfCases
-%     % Valori casuali potenzialmente critici da inserire nel dataset
-%     criticalValue = randi([m M]);
-%     
-%     % Inserimento dei valori potenzialmente critici in posizioni casuali
-%     % del dataset
-%     criticalIndex = randi([1 length(y)]);
-%     y(criticalIndex) = y(criticalIndex) + criticalValue;
-% end
+for i = 1 : numOfCases
+    % Valori casuali potenzialmente critici da inserire nel dataset
+    criticalValue = randi([m M]);
+    
+    % Inserimento dei valori potenzialmente critici in posizioni casuali
+    % del dataset
+    criticalIndex = randi([1 length(y)]);
+    y(criticalIndex) = y(criticalIndex) + criticalValue;
+end
 
 figure(3);
 controlchart(y,'charttype',{'c'});

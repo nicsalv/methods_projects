@@ -2,10 +2,10 @@ clear;
 clc;
 
 % Leggo i tempi di processamento dei job su ogni macchina dal file excel
-M1 = xlsread('ese2_data.xlsx', 'B2:F2')';
-M2 = xlsread('ese2_data.xlsx', 'B3:F3')';
-M3 = xlsread('ese2_data.xlsx', 'B4:F4')';
-M4 = xlsread('ese2_data.xlsx', 'B5:F5')';
+M1 = xlsread('ese2_data.xlsx', 'B2:K2')';
+M2 = xlsread('ese2_data.xlsx', 'B3:K3')';
+M3 = xlsread('ese2_data.xlsx', 'B4:K4')';
+M4 = xlsread('ese2_data.xlsx', 'B5:K5')';
 
 % In ogni colonna ho i tempi di processamento su quella macchina
 M = [M1 M2 M3 M4];
@@ -45,6 +45,8 @@ for i = 2:length(jobs)
     TB = TB + MB(scheduled(i));
     
 end
+
+% Ordine job schedulati -> nel vettore scheduled
 
 Cmax = TB;
 
